@@ -198,9 +198,9 @@ load(FD, Bytes) ->
         {ok, <<?Resp_STK_INSYNC, ?Resp_STK_OK>>} ->
             load_1(FD, 0, Bytes);
         {ok, Resp} ->
-            {protocol_error, {response, Resp}};
+            {protocol_error, enter_progmode, Resp};
         {error, Error} ->
-            {error, enter_progmode, Error}
+            {serial_error, enter_progmode, Error}
     end.
 
 load_1(FD, _Address, []) ->
@@ -213,9 +213,9 @@ load_1(FD, _Address, []) ->
         {ok, <<?Resp_STK_INSYNC, ?Resp_STK_OK>>} ->
             ok;
         {ok, Resp} ->
-            {protocol_error, {response, Resp}};
+            {protocol_error, leave_progmode, Resp};
         {error, Error} ->
-            {error, leave_progmode, Error}
+            {serial_error, leave_progmode, Error}
     end;
 
 load_1(FD, Address, Bytes) ->
@@ -235,9 +235,9 @@ load_1(FD, Address, Bytes) ->
         {ok, <<?Resp_STK_INSYNC, ?Resp_STK_OK>>} ->
             load_2(FD, Address, Bytes);
         {ok, Resp} ->
-            {protocol_error, {response, Resp}};
+            {protocol_error, load_address, Resp};
         {error, Error} ->
-            {error, {load_address, Address}, Error}
+            {serial_error, load_address, Error}
     end.
 
 load_2(FD, Address, [H|T]) ->
@@ -259,9 +259,9 @@ load_2(FD, Address, [H|T]) ->
         {ok, <<?Resp_STK_INSYNC, ?Resp_STK_OK>>} ->
             load_1(FD, Address+byte_size(H) div 2, T);
         {ok, Resp} ->
-            {protocol_error, {response, Resp}};
+            {protocol_error, prog_page, Resp};
         {error, Error} ->
-            {error, {prog_page, Address, H}, Error}
+            {serial_error, prog_page, Error}
     end.
 
 
