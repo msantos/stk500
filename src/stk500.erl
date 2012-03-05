@@ -41,6 +41,7 @@
 
         sync/1,
         read/1, read/2,
+        readx/2,
 
         hex_file/1, hex_file/2,
         chunk/2,
@@ -156,10 +157,28 @@ sync(FD) ->
     serctl:write(FD, <<?Cmnd_STK_GET_SYNC, ?Sync_CRC_EOP>>).
 
 
+% Read up to N bytes
 read(FD) ->
     read(FD, 2).
 read(FD, N) ->
     poll(FD, N, 10).
+
+% Read exactly N bytes
+readx(FD, N) ->
+    readx(FD, N, []).
+readx(FD, N, Acc) ->
+    Size = iolist_size(Acc),
+    case read(FD, N) of
+        {ok, Buf} when byte_size(Buf) == N ->
+            {ok, Buf};
+        {ok, Buf} when byte_size(Buf) + Size == N ->
+            {ok, iolist_to_binary(lists:reverse([Buf|Acc]))};
+        {ok, Buf} ->
+            readx(FD, N-byte_size(Buf), [Buf|Acc]);
+        {error, Error} ->
+            % XXX throw away away buffered data
+            {error, Error}
+    end.
 
 
 hex_file(File) ->
@@ -175,7 +194,7 @@ load(FD, Bytes) ->
     reset(FD),
 
     ok = serctl:write(FD, <<?Cmnd_STK_ENTER_PROGMODE, ?Sync_CRC_EOP>>),
-    case read(FD, 2) of
+    case readx(FD, 2) of
         {ok, <<?Resp_STK_INSYNC, ?Resp_STK_OK>>} ->
             load_1(FD, 0, Bytes);
         {ok, Resp} ->
@@ -190,7 +209,7 @@ load_1(FD, _Address, []) ->
         ?Sync_CRC_EOP
         >>),
 
-    case read(FD, 2) of
+    case readx(FD, 2) of
         {ok, <<?Resp_STK_INSYNC, ?Resp_STK_OK>>} ->
             ok;
         {ok, Resp} ->
@@ -212,7 +231,7 @@ load_1(FD, Address, Bytes) ->
             {cmd, Cmd}
         ]),
 
-    case read(FD, 2) of
+    case readx(FD, 2) of
         {ok, <<?Resp_STK_INSYNC, ?Resp_STK_OK>>} ->
             load_2(FD, Address, Bytes);
         {ok, Resp} ->
@@ -236,11 +255,8 @@ load_2(FD, Address, [H|T]) ->
 
     ok = serctl:write(FD, Cmd),
 
-    case read(FD, 2) of
+    case readx(FD, 2) of
         {ok, <<?Resp_STK_INSYNC, ?Resp_STK_OK>>} ->
-            load_1(FD, Address+byte_size(H) div 2, T);
-        {ok, <<?Resp_STK_INSYNC>>} ->
-            read(FD,1),
             load_1(FD, Address+byte_size(H) div 2, T);
         {ok, Resp} ->
             {protocol_error, {response, Resp}};
