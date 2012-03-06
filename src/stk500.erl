@@ -45,7 +45,7 @@
 
         hex_file/1, hex_file/2,
         chunk/2,
-        load/2
+        load/2, load/3
     ]).
 
 -define(DEV, "/dev/ttyUSB0").
@@ -55,12 +55,6 @@
 
 -define(TIOCM_DTR, 16#002).
 -define(TIOCM_RTS, 16#004).
-
--record(stk500_prog, {
-        cmd,
-        address = 0,
-        buf = []
-    }).
 
 
 open() ->
@@ -197,25 +191,29 @@ hex_file(intel, File) ->
 
 
 load(FD, Bytes) ->
+    load(FD, Bytes, []).
+
+load(FD, Bytes, Opt) ->
     reset(FD),
 
-    ok = cmd(FD, #stk500_prog{cmd = enter_progmode}),
+    ok = cmd(FD, enter_progmode),
 
     lists:foldl(
         fun(Buf, Address) ->
-                ok = cmd(FD, #stk500_prog{cmd = load_address, address = Address}),
-                ok = cmd(FD, #stk500_prog{cmd = prog_page, buf = Buf}),
+                ok = cmd(FD, load_address, [{address, Address}] ++ Opt),
+                ok = cmd(FD, prog_page, [{buf, Buf}] ++ Opt),
                 Address + byte_size(Buf) div 2
         end,
         0,
         Bytes),
 
-    cmd(FD, #stk500_prog{cmd = leave_progmode}).
+    cmd(FD, leave_progmode).
 
 
-cmd(FD, #stk500_prog{
-        cmd = enter_progmode
-    }) ->
+cmd(FD, Cmd) ->
+    cmd(FD, Cmd, []).
+
+cmd(FD, enter_progmode, _Opt) ->
 
     Cmd = <<?Cmnd_STK_ENTER_PROGMODE, ?Sync_CRC_EOP>>,
 
@@ -231,9 +229,7 @@ cmd(FD, #stk500_prog{
     end;
 
 % No more data to write, exit programming mode
-cmd(FD, #stk500_prog{
-        cmd = leave_progmode
-    }) ->
+cmd(FD, leave_progmode, _Opt) ->
 
     Cmd = <<?Cmnd_STK_LEAVE_PROGMODE, ?Sync_CRC_EOP>>,
 
@@ -248,10 +244,10 @@ cmd(FD, #stk500_prog{
             {serial_error, leave_progmode, Error}
     end;
 
-cmd(FD, #stk500_prog{
-        cmd = load_address,
-        address = Address
-    }) ->
+cmd(FD, load_address, Opt) ->
+
+    Address = proplists:get_value(address, Opt, 0),
+    Verbose = proplists:get_value(verbose, Opt, false),
 
     Cmd = <<?Cmnd_STK_LOAD_ADDRESS,
         Address:2/little-unsigned-integer-unit:8,
@@ -260,10 +256,7 @@ cmd(FD, #stk500_prog{
 
     ok = serctl:write(FD, Cmd),
 
-    error_logger:info_report([
-            {address, Address},
-            {cmd, Cmd}
-        ]),
+    verbose(Verbose, [{address, Address}, {cmd, Cmd} ]),
 
     case readx(FD, 2) of
         {ok, <<?Resp_STK_INSYNC, ?Resp_STK_OK>>} ->
@@ -274,10 +267,10 @@ cmd(FD, #stk500_prog{
             {serial_error, load_address, Error}
     end;
 
-cmd(FD, #stk500_prog{
-        cmd = prog_page,
-        buf = Buf
-    }) ->
+cmd(FD, prog_page, Opt) ->
+
+    Buf = proplists:get_value(buf, Opt, <<>>),
+    Verbose = proplists:get_value(verbose, Opt, false),
 
     Cmd = <<?Cmnd_STK_PROG_PAGE,
         (byte_size(Buf)):2/big-unsigned-integer-unit:8,
@@ -285,10 +278,7 @@ cmd(FD, #stk500_prog{
         Buf/bytes,
         ?Sync_CRC_EOP>>,
 
-    error_logger:info_report([
-            {cmd, Cmd},
-            {data, Buf}
-        ]),
+    verbose(Verbose, [{cmd, Cmd}, {data, Buf}]),
 
     ok = serctl:write(FD, Cmd),
 
@@ -372,3 +362,9 @@ rec_data(<<>>, Acc) ->
     lists:reverse(Acc);
 rec_data(<<Byte:2/bytes, Rest/binary>>, Acc) ->
     rec_data(Rest, [bin_to_int(Byte, 16)|Acc]).
+
+
+verbose(false, _) ->
+    ok;
+verbose(true, Data) ->
+    error_logger:info_report(Data).
