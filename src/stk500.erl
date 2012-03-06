@@ -56,6 +56,11 @@
 -define(TIOCM_DTR, 16#002).
 -define(TIOCM_RTS, 16#004).
 
+-record(stk500_prog, {
+        cmd,
+        address = 0
+    }).
+
 
 open() ->
     open(?DEV, [{speed, b19200}]).
@@ -192,22 +197,33 @@ hex_file(intel, File) ->
 
 load(FD, Bytes) ->
     reset(FD),
+    cmd(#stk500_prog{cmd = enter_progmode}, FD, Bytes).
 
-    ok = serctl:write(FD, <<?Cmnd_STK_ENTER_PROGMODE, ?Sync_CRC_EOP>>),
+cmd(#stk500_prog{
+        cmd = enter_progmode
+    } = State, FD, Bytes) ->
+
+    Cmd = <<?Cmnd_STK_ENTER_PROGMODE, ?Sync_CRC_EOP>>,
+
+    ok = serctl:write(FD, Cmd),
+
     case readx(FD, 2) of
         {ok, <<?Resp_STK_INSYNC, ?Resp_STK_OK>>} ->
-            load_1(FD, 0, Bytes);
+            cmd(State#stk500_prog{cmd = load_address}, FD, Bytes);
         {ok, Resp} ->
             {protocol_error, enter_progmode, Resp};
         {error, Error} ->
             {serial_error, enter_progmode, Error}
-    end.
+    end;
 
-load_1(FD, _Address, []) ->
-    ok = serctl:write(FD, <<
-        ?Cmnd_STK_LEAVE_PROGMODE,
-        ?Sync_CRC_EOP
-        >>),
+% No more data to write, exit programming mode
+cmd(#stk500_prog{
+        cmd = load_address
+    }, FD, []) ->
+
+    Cmd = <<?Cmnd_STK_LEAVE_PROGMODE, ?Sync_CRC_EOP>>,
+
+    ok = serctl:write(FD, Cmd),
 
     case readx(FD, 2) of
         {ok, <<?Resp_STK_INSYNC, ?Resp_STK_OK>>} ->
@@ -218,7 +234,11 @@ load_1(FD, _Address, []) ->
             {serial_error, leave_progmode, Error}
     end;
 
-load_1(FD, Address, Bytes) ->
+cmd(#stk500_prog{
+        cmd = load_address,
+        address = Address
+    } = State, FD, Bytes) ->
+
     Cmd = <<?Cmnd_STK_LOAD_ADDRESS,
         Address:2/little-unsigned-integer-unit:8,
         ?Sync_CRC_EOP
@@ -233,14 +253,18 @@ load_1(FD, Address, Bytes) ->
 
     case readx(FD, 2) of
         {ok, <<?Resp_STK_INSYNC, ?Resp_STK_OK>>} ->
-            load_2(FD, Address, Bytes);
+            cmd(State#stk500_prog{cmd = prog_page}, FD, Bytes);
         {ok, Resp} ->
             {protocol_error, load_address, Resp};
         {error, Error} ->
             {serial_error, load_address, Error}
-    end.
+    end;
 
-load_2(FD, Address, [H|T]) ->
+cmd(#stk500_prog{
+        cmd = prog_page,
+        address = Address
+    } = State, FD, [H|T]) ->
+
     Cmd = <<?Cmnd_STK_PROG_PAGE,
         (byte_size(H)):2/big-unsigned-integer-unit:8,
         $F,
@@ -257,7 +281,10 @@ load_2(FD, Address, [H|T]) ->
 
     case readx(FD, 2) of
         {ok, <<?Resp_STK_INSYNC, ?Resp_STK_OK>>} ->
-            load_1(FD, Address+byte_size(H) div 2, T);
+            cmd(State#stk500_prog{
+                    cmd = load_address,
+                    address = Address+byte_size(H) div 2
+                }, FD, T);
         {ok, Resp} ->
             {protocol_error, prog_page, Resp};
         {error, Error} ->
