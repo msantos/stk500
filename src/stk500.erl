@@ -123,11 +123,19 @@ reset(FD) ->
 version(FD) ->
     reset(FD),
 
-    ok = serctl:write(FD, <<?Cmnd_STK_GET_PARAMETER, ?Parm_STK_SW_MAJOR, ?Sync_CRC_EOP>>),
-    {ok, <<?Resp_STK_INSYNC, Major, ?Resp_STK_OK>>} = read(FD, 3),
+    Size = [{size, 3}],
 
-    ok = serctl:write(FD, <<?Cmnd_STK_GET_PARAMETER, ?Parm_STK_SW_MINOR, ?Sync_CRC_EOP>>),
-    {ok, <<?Resp_STK_INSYNC, Minor, ?Resp_STK_OK>>} = read(FD, 3),
+    {ok, <<?Resp_STK_INSYNC, Major, ?Resp_STK_OK>>} = cmd(
+        FD,
+        <<?Cmnd_STK_GET_PARAMETER, ?Parm_STK_SW_MAJOR, ?Sync_CRC_EOP>>,
+        Size
+    ),
+
+    {ok, <<?Resp_STK_INSYNC, Minor, ?Resp_STK_OK>>} = cmd(
+        FD,
+        <<?Cmnd_STK_GET_PARAMETER, ?Parm_STK_SW_MINOR, ?Sync_CRC_EOP>>,
+        Size
+    ),
 
     {Major, Minor}.
 
@@ -238,9 +246,11 @@ cmd(FD, Cmd, Opt) ->
             {error, Error}
     end.
 
-cmd_1(FD, _Cmd, _Opt) ->
+cmd_1(FD, _Cmd, Opt) ->
 
-    case readx(FD, 2) of
+    Size = proplists:get_value(size, Opt, 2),
+
+    case readx(FD, Size) of
         {ok, Resp} ->
             {ok, Resp};
         {error, Error} ->
