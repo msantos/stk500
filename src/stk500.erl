@@ -45,7 +45,8 @@
 
         hex_file/1, hex_file/2,
         chunk/2,
-        load/2, load/3
+        load/2, load/3,
+        cmd/2, cmd/3
     ]).
 
 -define(DEV, "/dev/ttyUSB0").
@@ -196,99 +197,52 @@ load(FD, Bytes) ->
 load(FD, Bytes, Opt) ->
     reset(FD),
 
-    ok = cmd(FD, enter_progmode),
+    ok = cmd(FD, <<?Cmnd_STK_ENTER_PROGMODE, ?Sync_CRC_EOP>>, Opt),
 
     lists:foldl(
         fun(Buf, Address) ->
-                ok = cmd(FD, load_address, [{address, Address}] ++ Opt),
-                ok = cmd(FD, prog_page, [{buf, Buf}] ++ Opt),
+                ok = cmd(FD, <<?Cmnd_STK_LOAD_ADDRESS,
+                    Address:2/little-unsigned-integer-unit:8,
+                    ?Sync_CRC_EOP>>, Opt),
+
+                ok = cmd(FD, <<?Cmnd_STK_PROG_PAGE,
+                    (byte_size(Buf)):2/big-unsigned-integer-unit:8,
+                    $F,
+                    Buf/bytes,
+                    ?Sync_CRC_EOP>>, Opt),
                 Address + byte_size(Buf) div 2
         end,
         0,
         Bytes),
 
-    cmd(FD, leave_progmode).
+    cmd(FD, <<?Cmnd_STK_LEAVE_PROGMODE, ?Sync_CRC_EOP>>, Opt).
 
 
 cmd(FD, Cmd) ->
     cmd(FD, Cmd, []).
 
-cmd(FD, enter_progmode, _Opt) ->
+cmd(FD, Cmd, Opt) ->
 
-    Cmd = <<?Cmnd_STK_ENTER_PROGMODE, ?Sync_CRC_EOP>>,
-
-    ok = serctl:write(FD, Cmd),
-
-    case readx(FD, 2) of
-        {ok, <<?Resp_STK_INSYNC, ?Resp_STK_OK>>} ->
-            ok;
-        {ok, Resp} ->
-            {protocol_error, enter_progmode, Resp};
-        {error, Error} ->
-            {serial_error, enter_progmode, Error}
-    end;
-
-% No more data to write, exit programming mode
-cmd(FD, leave_progmode, _Opt) ->
-
-    Cmd = <<?Cmnd_STK_LEAVE_PROGMODE, ?Sync_CRC_EOP>>,
-
-    ok = serctl:write(FD, Cmd),
-
-    case readx(FD, 2) of
-        {ok, <<?Resp_STK_INSYNC, ?Resp_STK_OK>>} ->
-            ok;
-        {ok, Resp} ->
-            {protocol_error, leave_progmode, Resp};
-        {error, Error} ->
-            {serial_error, leave_progmode, Error}
-    end;
-
-cmd(FD, load_address, Opt) ->
-
-    Address = proplists:get_value(address, Opt, 0),
     Verbose = proplists:get_value(verbose, Opt, false),
 
-    Cmd = <<?Cmnd_STK_LOAD_ADDRESS,
-        Address:2/little-unsigned-integer-unit:8,
-        ?Sync_CRC_EOP
-        >>,
+    verbose(Verbose, [{cmd, Cmd}]),
 
-    ok = serctl:write(FD, Cmd),
+    case serctl:write(FD, Cmd) of
+        ok ->
+            cmd_1(FD, Cmd, Opt);
+        {error, Error} ->
+            {serial_error, Cmd, Error}
+    end.
 
-    verbose(Verbose, [{address, Address}, {cmd, Cmd} ]),
+cmd_1(FD, Cmd, _Opt) ->
 
     case readx(FD, 2) of
         {ok, <<?Resp_STK_INSYNC, ?Resp_STK_OK>>} ->
             ok;
         {ok, Resp} ->
-            {protocol_error, load_address, Resp};
+            {protocol_error, Cmd, Resp};
         {error, Error} ->
-            {serial_error, load_address, Error}
-    end;
-
-cmd(FD, prog_page, Opt) ->
-
-    Buf = proplists:get_value(buf, Opt, <<>>),
-    Verbose = proplists:get_value(verbose, Opt, false),
-
-    Cmd = <<?Cmnd_STK_PROG_PAGE,
-        (byte_size(Buf)):2/big-unsigned-integer-unit:8,
-        $F,
-        Buf/bytes,
-        ?Sync_CRC_EOP>>,
-
-    verbose(Verbose, [{cmd, Cmd}, {data, Buf}]),
-
-    ok = serctl:write(FD, Cmd),
-
-    case readx(FD, 2) of
-        {ok, <<?Resp_STK_INSYNC, ?Resp_STK_OK>>} ->
-            ok;
-        {ok, Resp} ->
-            {protocol_error, prog_page, Resp};
-        {error, Error} ->
-            {serial_error, prog_page, Error}
+            {serial_error, Cmd, Error}
     end.
 
 
