@@ -57,6 +57,8 @@
 -define(TIOCM_DTR, 16#002).
 -define(TIOCM_RTS, 16#004).
 
+-define(STK500_OK, <<?Resp_STK_INSYNC, ?Resp_STK_OK>>).
+
 
 open() ->
     open(?DEV, [{speed, b19200}]).
@@ -197,15 +199,15 @@ load(FD, Bytes) ->
 load(FD, Bytes, Opt) ->
     reset(FD),
 
-    ok = cmd(FD, <<?Cmnd_STK_ENTER_PROGMODE, ?Sync_CRC_EOP>>, Opt),
+    {ok, ?STK500_OK} = cmd(FD, <<?Cmnd_STK_ENTER_PROGMODE, ?Sync_CRC_EOP>>, Opt),
 
     lists:foldl(
         fun(Buf, Address) ->
-                ok = cmd(FD, <<?Cmnd_STK_LOAD_ADDRESS,
+                {ok, ?STK500_OK} = cmd(FD, <<?Cmnd_STK_LOAD_ADDRESS,
                     Address:2/little-unsigned-integer-unit:8,
                     ?Sync_CRC_EOP>>, Opt),
 
-                ok = cmd(FD, <<?Cmnd_STK_PROG_PAGE,
+                {ok, ?STK500_OK} = cmd(FD, <<?Cmnd_STK_PROG_PAGE,
                     (byte_size(Buf)):2/big-unsigned-integer-unit:8,
                     $F,
                     Buf/bytes,
@@ -215,7 +217,9 @@ load(FD, Bytes, Opt) ->
         0,
         Bytes),
 
-    cmd(FD, <<?Cmnd_STK_LEAVE_PROGMODE, ?Sync_CRC_EOP>>, Opt).
+    {ok, ?STK500_OK} = cmd(FD, <<?Cmnd_STK_LEAVE_PROGMODE, ?Sync_CRC_EOP>>, Opt),
+
+    ok.
 
 
 cmd(FD, Cmd) ->
@@ -231,18 +235,16 @@ cmd(FD, Cmd, Opt) ->
         ok ->
             cmd_1(FD, Cmd, Opt);
         {error, Error} ->
-            {serial_error, Cmd, Error}
+            {error, Error}
     end.
 
-cmd_1(FD, Cmd, _Opt) ->
+cmd_1(FD, _Cmd, _Opt) ->
 
     case readx(FD, 2) of
-        {ok, <<?Resp_STK_INSYNC, ?Resp_STK_OK>>} ->
-            ok;
         {ok, Resp} ->
-            {protocol_error, Cmd, Resp};
+            {ok, Resp};
         {error, Error} ->
-            {serial_error, Cmd, Error}
+            {error, Error}
     end.
 
 
