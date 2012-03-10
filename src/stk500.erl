@@ -204,7 +204,7 @@ hex_file(intel, File) ->
 load(FD, Bytes) ->
     load(FD, Bytes, []).
 
-load(FD, Bytes, Opt) ->
+load(FD, Bytes, Opt) when is_list(Opt) ->
     reset(FD),
 
     {ok, ?STK500_OK} = cmd(FD, <<?Cmnd_STK_ENTER_PROGMODE, ?Sync_CRC_EOP>>, Opt),
