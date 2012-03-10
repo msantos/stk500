@@ -176,16 +176,16 @@ read(FD, N) ->
 
 % Read exactly N bytes
 readx(FD, N) ->
-    readx(FD, N, []).
-readx(FD, N, Acc) ->
+    readx(FD, N, N, []).
+readx(FD, Total, N, Acc) ->
     Size = iolist_size(Acc),
     case read(FD, N) of
-        {ok, Buf} when byte_size(Buf) == N ->
+        {ok, Buf} when byte_size(Buf) == Total ->
             {ok, Buf};
-        {ok, Buf} when byte_size(Buf) + Size == N ->
+        {ok, Buf} when byte_size(Buf) + Size == Total ->
             {ok, iolist_to_binary(lists:reverse([Buf|Acc]))};
         {ok, Buf} ->
-            readx(FD, N-byte_size(Buf), [Buf|Acc]);
+            readx(FD, Total, N-byte_size(Buf), [Buf|Acc]);
         {error, Error} ->
             % XXX throw away away buffered data
             {error, Error}
