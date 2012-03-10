@@ -263,7 +263,7 @@ chunk(Bytes, Size) when is_list(Bytes) ->
 chunk(Bytes, Size) when is_binary(Bytes) ->
     chunk(Bytes, Size, []).
 
-chunk(Bytes, Size, Acc) ->
+chunk(Bytes, Size, Acc) when Size > 0, Size rem 2 == 0, Size =< 256 ->
     case Bytes of
         <<Chunk:Size/bytes, Rest/binary>> ->
             chunk(Rest, Size, [Chunk|Acc]);
