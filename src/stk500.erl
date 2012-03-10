@@ -165,7 +165,7 @@ dtrrts(FD, Status) when is_atom(Status) ->
 
 % <<16#30, 16#20>>
 sync(FD) ->
-    serctl:write(FD, <<?Cmnd_STK_GET_SYNC, ?Sync_CRC_EOP>>).
+    cmd(FD, <<?Cmnd_STK_GET_SYNC, ?Sync_CRC_EOP>>).
 
 
 % Read up to N bytes
