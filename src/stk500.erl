@@ -41,7 +41,6 @@
 
         sync/1,
         read/1, read/2,
-        readx/2,
 
         hex_file/1, hex_file/2,
         chunk/2,
@@ -174,23 +173,6 @@ read(FD) ->
 read(FD, N) ->
     poll(FD, N, 10).
 
-% Read exactly N bytes
-readx(FD, N) ->
-    readx(FD, N, N, []).
-readx(FD, Total, N, Acc) ->
-    Size = iolist_size(Acc),
-    case read(FD, N) of
-        {ok, Buf} when byte_size(Buf) == Total ->
-            {ok, Buf};
-        {ok, Buf} when byte_size(Buf) + Size == Total ->
-            {ok, iolist_to_binary(lists:reverse([Buf|Acc]))};
-        {ok, Buf} ->
-            readx(FD, Total, N-byte_size(Buf), [Buf|Acc]);
-        {error, Error} ->
-            % XXX throw away away buffered data
-            {error, Error}
-    end.
-
 
 hex_file(File) ->
     hex_file(intel, File).
@@ -250,7 +232,7 @@ cmd_1(FD, _Cmd, Opt) ->
 
     Size = proplists:get_value(size, Opt, 2),
 
-    case readx(FD, Size) of
+    case serctl:readx(FD, Size) of
         {ok, Resp} ->
             {ok, Resp};
         {error, Error} ->
