@@ -16,7 +16,56 @@ talk to an Arduino.
     Hex = stk500:hex_file("doc/counter.cpp.hex"),
     Bytes = stk500:chunk(Hex, 128),
 
-    stk500:load(FD, Bytes).
+    ok = stk500:load(FD, Bytes),
+
+    stk500:close(FD).
+
+
+`doc/counter.cpp.hex` is a compiled hex file for testing, generated
+from the example in examples/counter/counter.pde. To call the example
+code from Erlang:
+
+    1> counter:run(). % loops adding 1 to a counter
+
+    2> {ok, FD} = counter:start("/dev/ttyUSB0").
+    3> counter:read(FD).
+    {ok, 0}
+
+    4> counter:incr(FD).
+    ok
+    5> counter:incr(FD, 5).
+    6> counter:read(FD).
+    {ok, 6}
+
+    7> counter:set(FD, 3).
+    ok
+    8> counter:read(FD).
+    {ok, 3}
+
+
+## Note on Protocol Dumping
+
+The simplest way to dump the serial communications is by using strace. For
+example, on an Ubuntu system, to see how the Arduino IDE is calling
+avrdude:
+
+    # as root
+    cd /usr/share/arduino/hardware/tools
+
+    mv avrdude avrdude.dist
+
+    cat<<EOF>avrdude
+    #!/bin/sh
+
+    set -e
+
+    mkdir /tmp/arduino-$$
+    strace -e read=3 -e write=3 -v -o /tmp/arduino-$$/dump \
+    -e trace=open,close,read,write,ioctl \
+    /usr/share/arduino/hardware/tools/avrdude.dist $@
+    EOF
+
+An example protocol dump is doc/protocol_trace.txt.
 
 
 ## Resources
