@@ -40,7 +40,6 @@
         version/1,
 
         sync/1,
-        read/1, read/2,
 
         hex_file/1, hex_file/2,
         chunk/2,
@@ -106,15 +105,13 @@ open(Dev, Opt) ->
 
 
 reset(FD) ->
-    ok = dtrrts(FD, off),
-    timer:sleep(50),
-    ok = dtrrts(FD, on),
-    timer:sleep(50),
+    [ begin dtrrts(FD, Status),
+                timer:sleep(50) end || Status <- [off, on] ],
 
-    [ begin read(FD), sync(FD) end
-        || _ <- lists:seq(1,3) ],
+    [ begin serctl:readx(FD, 2, 250),
+                sync(FD) end || _ <- lists:seq(1,3) ],
 
-    read(FD),
+    serctl:readx(FD, 2, 250),
 
     ok.
 
@@ -165,13 +162,6 @@ dtrrts(FD, Status) when is_atom(Status) ->
 % <<16#30, 16#20>>
 sync(FD) ->
     cmd(FD, <<?Cmnd_STK_GET_SYNC, ?Sync_CRC_EOP>>).
-
-
-% Read up to N bytes
-read(FD) ->
-    read(FD, 2).
-read(FD, N) ->
-    poll(FD, N, 10).
 
 
 hex_file(File) ->
@@ -259,21 +249,6 @@ chunk(Bytes, Size, Acc) when Size > 0, Size rem 2 == 0, Size =< 256 ->
 %%--------------------------------------------------------------------
 bin_to_int(N, Base) ->
     list_to_integer(binary_to_list(N), Base).
-
-
-poll(_FD, _Num, 0) ->
-    {error, eagain};
-poll(FD, NumBytes, Retry) ->
-    case serctl:read(FD, NumBytes) of
-        {error, eagain} ->
-            timer:sleep(25),
-            poll(FD, NumBytes, Retry-1);
-        {ok, Buf} ->
-            {ok, Buf};
-        Error ->
-            Error
-    end.
-
 
 bool(0) -> off;
 bool(1) -> on.
