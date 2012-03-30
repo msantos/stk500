@@ -29,7 +29,7 @@
 %% ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 %% POSSIBILITY OF SUCH DAMAGE.
 -module(stk500).
--include("serctl.hrl").
+-include_lib("srly/include/serctl.hrl").
 -include("stk500.hrl").
 
 -export([
