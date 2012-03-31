@@ -34,12 +34,13 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--define(SERIAL_PORT, "/dev/ttyUSB0").
 -define(HEX_FILE, "doc/counter.cpp.hex").
+
 
 %% Upload code to an Arduino.
 stk500_program_load_test() ->
-    {ok,FD} = stk500:open(?SERIAL_PORT),
+    Serial = stk500:serial_device(),
+    {ok,FD} = stk500:open(Serial),
     error_logger:info_report([{hex_file, codepath(?HEX_FILE)}]),
     Hex = stk500:hex_file(codepath(?HEX_FILE)),
     Bytes = stk500:chunk(Hex, 128),

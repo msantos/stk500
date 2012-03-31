@@ -44,7 +44,9 @@
         hex_file/1, hex_file/2,
         chunk/2,
         load/2, load/3,
-        cmd/2, cmd/3
+        cmd/2, cmd/3,
+
+        serial_device/0
     ]).
 
 -define(DEV, "/dev/ttyUSB0").
@@ -59,7 +61,8 @@
 
 
 open() ->
-    open(?DEV, [{speed, b19200}]).
+    Dev = serial_device(),
+    open(Dev, [{speed, b19200}]).
 
 open(Dev) ->
     open(Dev, [{speed, b19200}]).
@@ -241,6 +244,16 @@ chunk(Bytes, Size, Acc) when Size > 0, Size rem 2 == 0, Size =< 256 ->
             chunk(Rest, Size, [Chunk|Acc]);
         _ ->
             lists:reverse([Bytes|Acc])
+    end.
+
+
+% Try to discover the serial device
+serial_device() ->
+    case os:getenv("STK500_SERIAL_PORT") of
+        false ->
+            ?DEV;
+        Serial ->
+            Serial
     end.
 
 
