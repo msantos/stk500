@@ -78,7 +78,7 @@ open(Dev, Opt) ->
         lflag = 0,
         cflag = serctl:constant(cs8)
         bor serctl:constant(clocal)
-        bor serctl:constant(cread), 
+        bor serctl:constant(cread),
 
         cc = lists:foldl(
             fun({Offset, Val}, Bin) ->
