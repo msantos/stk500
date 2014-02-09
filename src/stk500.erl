@@ -171,8 +171,9 @@ hex_file(File) ->
     hex_file(intel, File).
 
 hex_file(intel, File) ->
-    {ok, Bin} = file:read_file(File),
-    Hex = binary:split(Bin, <<"\r\n">>, [global, trim]),
+    {ok, Bin0} = file:read_file(File),
+    Bin = binary:replace(Bin0, <<"\r\n">>, <<"\n">>, [global]),
+    Hex = binary:split(Bin, <<"\n">>, [global, trim]),
     rec(Hex).
 
 
