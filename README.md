@@ -13,7 +13,7 @@ talk to an Arduino.
     % hex_file/1 returns a list of binaries as read from the
     % file (16 bytes). It's faster to use 128 bytes chunks.
 
-    Hex = stk500:hex_file("doc/counter.cpp.hex"),
+    Hex = stk500:hex_file("test/counter.cpp.hex"),
     Bytes = stk500:chunk(Hex, 128),
 
     ok = stk500:load(FD, Bytes),
@@ -21,7 +21,7 @@ talk to an Arduino.
     stk500:close(FD).
 
 
-`doc/counter.cpp.hex` is a compiled hex file for testing, generated
+`test/counter.cpp.hex` is a compiled hex file for testing, generated
 from the example in examples/counter/counter.pde. To call the example
 code from Erlang:
 

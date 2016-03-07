@@ -34,7 +34,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--define(HEX_FILE, "doc/counter.cpp.hex").
+-define(HEX_FILE, "counter.cpp.hex").
 
 
 %% Upload code to an Arduino.
@@ -50,6 +50,5 @@ stk500_program_load_test() ->
 codepath(File) ->
     filename:join([
             filename:dirname(code:which(?MODULE)),
-            "..",
             File
             ]).

@@ -1,0 +1,4 @@
+[{<<"srly">>,
+  {git,"git://github.com/msantos/srly.git",
+       {ref,"ab38706015550c42bae5586f47d063dfd583681b"}},
+  0}].
