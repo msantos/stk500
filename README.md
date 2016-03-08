@@ -42,6 +42,13 @@ code from Erlang:
     8> counter:read(FD).
     {ok, 3}
 
+## Build
+
+    $ rebar3 compile
+
+    # running tests
+    # arduino is attached to /dev/ttyUSB2
+    STK500_SERIAL_PORT=/dev/ttyUSB2 rebar3 ct
 
 ## Note on Protocol Dumping
 

@@ -1,4 +1,4 @@
-%% Copyright (c) 2012, Michael Santos <michael.santos@gmail.com>
+%% Copyright (c) 2012-2016, Michael Santos <michael.santos@gmail.com>
 %% All rights reserved.
 %%
 %% Redistribution and use in source and binary forms, with or without
@@ -28,17 +28,25 @@
 %% LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
 %% ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 %% POSSIBILITY OF SUCH DAMAGE.
--module(stk500_tests).
+-module(stk500_SUITE).
 
--compile(export_all).
+-include_lib("common_test/include/ct.hrl").
 
--include_lib("eunit/include/eunit.hrl").
+-export([
+        all/0
+    ]).
+
+-export([
+        stk500_program_load/1
+    ]).
 
 -define(HEX_FILE, "counter.cpp.hex").
 
+all() ->
+    [stk500_program_load].
 
 %% Upload code to an Arduino.
-stk500_program_load_test() ->
+stk500_program_load(_Config) ->
     Serial = stk500:serial_device(),
     {ok,FD} = stk500:open(Serial),
     error_logger:info_report([{hex_file, codepath(?HEX_FILE)}]),
