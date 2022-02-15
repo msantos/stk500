@@ -1,3 +1,4 @@
-{application, stk500,
-    [{description, "stk500 protocol for the Arduino"},
-    {vsn, "0.01"}]}.
+{application, stk500, [
+    {description, "stk500 protocol for the Arduino"},
+    {vsn, "0.2.0"}
+]}.
