@@ -1,6 +1,6 @@
 {application, stk500, [
     {description, "stk500 protocol for the Arduino"},
-    {vsn, "0.2.1"},
+    {vsn, "0.2.2"},
     {modules, []},
     {registered, []},
     {applications, [
@@ -11,7 +11,6 @@
     ]},
     {env, []},
     {licenses, ["ISC"]},
-    {maintainers, ["Michael Santos"]},
     {links, [{"Github", "https://github.com/msantos/stk500"}]},
     {doc, "doc"}
 ]}.
