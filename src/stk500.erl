@@ -44,12 +44,14 @@
 
 %% @doc Connect to the Arduino using the default serial device at
 %% 19200 baud
+-spec open() -> {ok, serctl:fd()} | {error, file:posix()}.
 open() ->
     Dev = serial_device(),
     open(Dev, [{speed, b19200}]).
 
 %% @doc Connect to the Arduino using the specified serial device at
 %% 19200 baud
+-spec open(serctl:dev()) -> {ok, serctl:fd()} | {error, file:posix()}.
 open(Dev) ->
     open(Dev, [{speed, b19200}]).
 
@@ -59,6 +61,7 @@ open(Dev) ->
 %% % The Diecimila uses 19200
 %% {ok,FD} = stk500:open("/dev/ttyUSB0", [{speed, 19200}]).
 %% '''
+-spec open(serctl:dev(), proplists:proplist()) -> {ok, serctl:fd()} | {error, file:posix()}.
 open(Dev, Opt) ->
     Speed = proplists:get_value(speed, Opt, b19200),
 
@@ -98,12 +101,20 @@ open(Dev, Opt) ->
         ]
     ),
 
-    {ok, FD} = serctl:open(Dev),
-    ok = serctl:tcsetattr(FD, tcsanow, Termios),
-
-    {ok, FD}.
+    case serctl:open(Dev) of
+        {ok, FD} ->
+            case serctl:tcsetattr(FD, tcsanow, Termios) of
+                ok ->
+                    {ok, FD};
+                Error ->
+                    Error
+            end;
+        Error ->
+            Error
+    end.
 
 %% @doc Reset the Arduino
+-spec reset(serctl:fd()) -> ok.
 reset(FD) ->
     [
         begin
@@ -126,6 +137,7 @@ reset(FD) ->
     ok.
 
 %% @doc Get version
+-spec version(serctl:fd()) -> {byte(), byte()}.
 version(FD) ->
     reset(FD),
 
@@ -145,6 +157,7 @@ version(FD) ->
 
     {Major, Minor}.
 
+-spec dtrrts(serctl:fd(), 0 | 1 | boolean()) -> ok.
 dtrrts(FD, Status) when is_integer(Status) ->
     dtrrts(FD, bool(Status));
 dtrrts(FD, Status) when is_atom(Status) ->
@@ -169,6 +182,7 @@ dtrrts(FD, Status) when is_atom(Status) ->
     ok.
 
 % <<16#30, 16#20>>
+-spec sync(serctl:fd()) -> ok | {error, file:posix()}.
 sync(FD) ->
     cmd(FD, <<?Cmnd_STK_GET_SYNC, ?Sync_CRC_EOP>>).
 
@@ -176,9 +190,11 @@ sync(FD) ->
 %%
 %% hex_file/1 returns a list of binaries as read from the
 %% % file (16 bytes). It's faster to use 128 bytes chunks.
+-spec hex_file(file:name_all()) -> [byte()].
 hex_file(File) ->
     hex_file(intel, File).
 
+-spec hex_file(intel, file:name_all()) -> ok.
 hex_file(intel, File) ->
     {ok, Bin0} = file:read_file(File),
     Bin = binary:replace(Bin0, <<"\r\n">>, <<"\n">>, [global]),
@@ -186,9 +202,11 @@ hex_file(intel, File) ->
     rec(Hex).
 
 %% @doc Load the hex file
+-spec load(serctl:fd(), [byte()]) -> ok.
 load(FD, Bytes) ->
     load(FD, Bytes, []).
 
+-spec load(serctl:fd(), [byte()], proplists:proplist()) -> ok.
 load(FD, Bytes, Opt) when is_list(Opt) ->
     reset(FD),
 
