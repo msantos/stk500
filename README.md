@@ -3,7 +3,7 @@ talk to an Arduino.
 
 ## Example
 
-```
+```erlang
 % Open the serial device attached to the Arduino
 % The Diecimila uses 19200
 {ok,FD} = stk500:open("/dev/ttyUSB0", [{speed, 19200}]),
@@ -25,7 +25,7 @@ stk500:close(FD).
 from the example in examples/counter/counter.pde. To call the example
 code from Erlang:
 
-```
+```erlang
 1> counter:run(). % loops adding 1 to a counter
 
 2> {ok, FD} = counter:start("/dev/ttyUSB0").
@@ -46,7 +46,7 @@ ok
 
 ## Build
 
-```
+```bash
 $ rebar3 compile
 
 # running tests
@@ -60,7 +60,7 @@ The simplest way to dump the serial communications is by using strace. For
 example, on an Ubuntu system, to see how the Arduino IDE is calling
 avrdude:
 
-```
+```bash
 # as root
 cd /usr/share/arduino/hardware/tools
 
@@ -84,6 +84,4 @@ An example protocol dump is doc/protocol_trace.txt.
 
 The STK500 protocol documentation can be found here:
 
-```
 http://www.atmel.com/Images/doc2525.pdf
-```
